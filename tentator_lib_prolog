@@ -1,0 +1,49 @@
+#!/usr/bin/perl
+
+# tentator - Multiple-Choice-Tests erstellen - Projektbeginn: 13.11.2016
+#                                                    Version: 13.11.2016
+#
+# Ziele:	- Test als ausführbares Programm
+#			- Auswertung in einem file sammeln, lesbar für mentor
+
+use strict;
+use utf8;
+use open ':encoding(utf8)';
+use Data::Dumper;
+$Data::Dumper::Purity = 1;
+use Tk;
+use Tk::DialogBox;
+use Tk::Pane;    # nötig seit Einbau der scrollbars
+
+#use Tk::ComboBox;
+use Tk::BrowseEntry;
+use Encode qw(decode encode);
+
+use Net::FTP;
+use File::Copy;
+
+$SIG {"QUIT"} = \&ende;
+$SIG {"INT"} = \&ende;
+$SIG {"STOP"} = \&ende;
+
+
+my $vorname;
+my $nachname;
+
+use vars qw($thema
+			$anzeigemodus
+			$fragen_randomisieren
+			$antworten_randomisieren
+			$auswertungsdatei_verstecken
+			@fragen
+			@antwortalternativen
+			@loesungen
+			@fragetyp);
+
+my $filename_prg;
+my $fragen_randomisieren = "ja";
+my $antworten_randomisieren = "nein";
+
+
+# Fragen, Anwortalternativen und Lösungen definieren:
+#	hier wird xxx.tent-File angefügt.

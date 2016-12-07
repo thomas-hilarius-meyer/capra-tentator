@@ -1,0 +1,235 @@
+# Fragen randomisieren:
+# --------- nach: Perl-Cookbook S. 121f. ---------------------------
+
+
+if ($fragen_randomisieren eq "ja") {
+   my $i;
+   for ($i = @fragen-1 ; $i > 0; $i--) {
+	   my $j = int rand ($i);
+	   next if $i == $j;
+	   @fragen[$i,$j]              = @fragen[$j,$i];
+	   @antwortalternativen[$i,$j] = @antwortalternativen[$j,$i];
+	   @loesungen[$i,$j]           = @loesungen[$j,$i];
+	   @fragetyp[$i,$j]            = @fragetyp[$j,$i];
+   }
+}
+	
+
+
+# Antworten randomisieren:
+
+if ($antworten_randomisieren eq "ja") {
+}
+
+
+# Test durchführen:
+
+my $z = 0;
+my @antwort;
+
+our $main = MainWindow->new( -title => "Test");
+
+$main->protocol('WM_DELETE_WINDOW',\&ende);
+my $fontsize_std = 12;
+
+my $ms;
+
+$main ->fontCreate( 'std',  -size => $fontsize_std );
+
+&hauptfenster;
+
+MainLoop;
+
+
+
+sub hauptfenster {
+	$ms->destroy() if Tk::Exists($ms);
+    $ms = $main -> Frame(
+ #       "Frame",
+  #      -scrollbars => "se",
+        -height     => "500",
+        -width      => "700"
+    )->pack( -fill => "both", -expand => "1" );
+
+$ms -> Label (
+		    -text => "Vorname:",
+            -font    => 'std'
+		) -> grid(
+		$ms -> Entry (
+		    -textvariable => \$vorname,
+            -font    => 'std'
+		)
+		);
+$ms -> Label (
+		    -text => "Nachname:",
+            -font    => 'std'
+		) -> grid(
+		$ms -> Entry (
+		    -textvariable => \$nachname,
+            -font    => 'std'
+		)
+		);
+		
+$ms -> Label (
+		    -text => "$thema",
+            -font    => 'std'
+		) -> grid("-");
+
+
+if ($anzeigemodus eq "liste") { 
+	for ( my $i = 0; $i < @fragen; $i++ ) {
+	$ms -> Label (
+		    -text => "$fragen[$i]",
+            -font    => 'std'
+		) -> grid();
+		for ( my $j = 0; $j < 4; $j++ ) {
+			$ms -> Radiobutton(
+                -text     => "$antwortalternativen[$i][$j]",
+                -value    => "$antwortalternativen[$i][$j]",
+                -variable => \$antwort[$i]
+            ) -> grid();
+		}
+	}
+} 
+else {
+	my $fragenummer = $z+1;
+	my $frageanzahl = @fragen;
+	$ms -> Label (-text => "Frage $fragenummer von $frageanzahl") -> grid("-");
+	$ms -> Button (
+		    -text => "zurück",
+            -font    => 'std',
+            -command => \&zurueckblaettern,
+		) -> grid(
+		$ms -> Button (
+		    -text => "vor",
+            -font    => 'std',
+            -command => \&vorblaettern,
+		)
+		);
+
+
+	$ms -> Label (
+		    -text => "$fragen[$z]",
+            -font    => 'std'
+		) -> grid("-");
+		for ( my $j = 0; $j < 4; $j++ ) {
+			$ms -> Radiobutton(
+                -text     => "$antwortalternativen[$z][$j]",
+                -value    => "$antwortalternativen[$z][$j]",
+                -variable => \$antwort[$z]
+            ) -> grid("-");
+		}
+		
+}
+
+$ms -> Button (
+		    -text => "Fertig",
+            -font    => 'std',
+            -command => \&fertig,
+		) -> grid(
+		$ms -> Button (
+		    -text => "Abbrechen",
+            -font    => 'std',
+            -command => \&ende,
+		)
+		);
+}
+
+sub vorblaettern {
+	$z++;
+	if ($z >= @fragen) {$z--};
+	&hauptfenster;
+};
+
+sub zurueckblaettern {
+	$z--;
+	if ($z < 0) {$z++};
+	&hauptfenster;
+};
+
+sub auswertung {
+	my $filename_auswertung_txt = $filename_prg . "_Auswertung.txt";
+	my $filename_auswertung_csv = $filename_prg . "_Auswertung.csv";
+	
+	
+	# Ausgabedatei verstecken:
+	
+	my $betriebssystem = $^O;
+	if (betriebssystem eq "linux") {
+		$filename_auswertung_txt = "." . $filename_auswertung_txt;
+		$filename_auswertung_csv = "." . $filename_auswertung_csv;
+	}
+	else {
+		open DATEI, ">>$filename_auswertung_txt";
+		close DATEI;
+		open DATEI, ">>$filename_auswertung_csv";
+		close DATEI;
+		# hidden-Attribut setzen!
+
+	}
+	
+	
+	# Text-Auswertung ausgeben:
+	
+	open DATEI, ">>$filename_auswertung_txt";
+
+	print DATEI "---------------------------------------------------------------\n";
+	print DATEI "$nachname, $vorname \n";
+	my $richtige;
+	my $falsche;
+	for ( my $i = 0; $i < @fragen; $i++ ) {
+		print DATEI "Frage: $fragen[$i] \n";
+		print DATEI "Du hast geantwortet: $antwort[$i] \n";
+		if ($antwort[$i] eq $antwortalternativen[$i][$loesungen[$i]]) {
+			print DATEI "Das war richtig! \n";
+			$richtige++;
+		}
+		else {
+			print DATEI "Das war falsch! -- ";
+		    print DATEI "Richtig ist: $antwortalternativen[$i][$loesungen[$i]] \n";
+			$falsche++;
+		}
+	}
+	print DATEI "Auswertung: \n";
+	print DATEI "Richtige Antworten: $richtige \n";
+	print DATEI "Falsche Antworten: $falsche \n";
+	my $prozent = $richtige / ($richtige + $falsche) * 100;
+	my $note = &note_festlegen($prozent);
+	print DATEI "Das entspricht $prozent Prozent, also der Note $note .\n";
+};
+
+sub note_festlegen {
+	my ziffernnote;
+	return ziffernnote;
+	if ($_[0] < 20) {$iffernnote = "00"};
+	if ($_[0] < 20) {$iffernnote = "01"};
+	if ($_[0] < 20) {$iffernnote = "02"};
+	if ($_[0] < 20) {$iffernnote = "03"};
+	if ($_[0] < 20) {$iffernnote = "04"};
+	if ($_[0] < 20) {$iffernnote = "05"};
+	if ($_[0] < 20) {$iffernnote = "06"};
+	if ($_[0] < 20) {$iffernnote = "07"};
+	if ($_[0] < 20) {$iffernnote = "08"};
+	if ($_[0] < 20) {$iffernnote = "09"};
+	if ($_[0] < 20) {$iffernnote = "10"};
+	if ($_[0] < 20) {$iffernnote = "11"};
+	if ($_[0] < 20) {$iffernnote = "12"};
+	if ($_[0] < 20) {$iffernnote = "13"};
+	if ($_[0] < 20) {$iffernnote = "14"};
+	if ($_[0] < 20) {$iffernnote = "15"};
+}
+
+
+sub ergebnis_eintragen{};
+
+
+sub fertig {
+	&auswertung;
+	&ergebnis_eintragen;
+	&ende;
+}
+
+
+sub ende {
+	exit;
+};
